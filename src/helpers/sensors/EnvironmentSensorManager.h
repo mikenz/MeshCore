@@ -18,6 +18,7 @@ protected:
   bool MLX90614_initialized = false;
   bool VL53L0X_initialized = false;
   bool BH1750_initialized = false;
+  bool MPL3115A2_initialized = false;
 
   bool gps_detected = false;
   bool gps_active = false;

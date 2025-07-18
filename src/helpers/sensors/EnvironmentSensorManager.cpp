@@ -71,6 +71,12 @@ static Adafruit_VL53L0X VL53L0X;
 static hp_BH1750 BH1750;
 #endif
 
+#if ENV_INCLUDE_MPL3115A2
+#define TELEM_MPL3115A2_ADDRESS 0x60      // MPL3115A2 pressure and temperature sensor I2C address
+#include <Adafruit_MPL3115A2.h>
+static Adafruit_MPL3115A2 MPL3115A2;
+#endif
+
 
 #if ENV_INCLUDE_GPS && RAK_BOARD
 static uint32_t gpsResetPin = 0;
@@ -202,6 +208,17 @@ bool EnvironmentSensorManager::begin() {
   }
   #endif
 
+  #if ENV_INCLUDE_MPL3115A2
+  if (MPL3115A2.begin(TELEM_WIRE)) {
+    MESH_DEBUG_PRINTLN("Found MPL3115A2 at address: %02X", TELEM_MPL3115A2_ADDRESS);
+    MPL3115A2.setSeaPressure(1013.26); // Set sea level pressure in hPa to a safe default. Only use for altitude calculations.
+    MPL3115A2_initialized = true;
+  } else {
+    MPL3115A2_initialized = false;
+    MESH_DEBUG_PRINTLN("MPL3115A2 was not found at I2C address %02X", TELEM_MPL3115A2_ADDRESS);
+  }
+  #endif
+
   return true;
 }
 
@@ -310,6 +327,16 @@ bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, Cayen
       } else {
         telemetry.addLuminosity(TELEM_CHANNEL_SELF, 0.0f); // no valid measurement
       }
+    }
+    #endif
+
+    #if ENV_INCLUDE_MPL3115A2
+    if (MPL3115A2_initialized) {
+      float pressure = MPL3115A2.getPressure();
+      float temperature = MPL3115A2.getTemperature();
+
+      telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, pressure);
+      telemetry.addTemperature(TELEM_CHANNEL_SELF, temperature);
     }
     #endif
 
