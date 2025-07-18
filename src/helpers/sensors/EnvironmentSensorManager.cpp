@@ -65,6 +65,13 @@ static Adafruit_MLX90614 MLX90614;
 static Adafruit_VL53L0X VL53L0X;
 #endif
 
+#if ENV_INCLUDE_BH1750
+#define TELEM_BH1750_ADDRESS 0x23      // BH1750 light sensor
+#include <hp_BH1750.h>
+static hp_BH1750 BH1750;
+#endif
+
+
 #if ENV_INCLUDE_GPS && RAK_BOARD
 static uint32_t gpsResetPin = 0;
 static bool i2cGPSFlag = false;
@@ -185,6 +192,16 @@ bool EnvironmentSensorManager::begin() {
   }
   #endif
 
+  #ifdef ENV_INCLUDE_BH1750
+  if (BH1750.begin(TELEM_BH1750_ADDRESS, TELEM_WIRE)) {
+    MESH_DEBUG_PRINTLN("Found BH1750 at address: %02X", TELEM_BH1750_ADDRESS);
+    BH1750_initialized = true;
+  } else {
+    BH1750_initialized = false;
+    MESH_DEBUG_PRINTLN("BH1750 was not found at I2C address %02X", TELEM_BH1750_ADDRESS);
+  }
+  #endif
+
   return true;
 }
 
@@ -280,6 +297,18 @@ bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, Cayen
         telemetry.addDistance(TELEM_CHANNEL_SELF, measure.RangeMilliMeter / 1000.0f); // convert mm to m
       } else {
         telemetry.addDistance(TELEM_CHANNEL_SELF, 0.0f); // no valid measurement
+      }
+    }
+    #endif
+
+    #if ENV_INCLUDE_BH1750
+    if (BH1750_initialized) {
+      BH1750.start(); //starts a measurement
+      float lux = BH1750.getLux(); //  waits until a conversion finished
+      if (lux >= 0) {
+        telemetry.addLuminosity(TELEM_CHANNEL_SELF, lux);
+      } else {
+        telemetry.addLuminosity(TELEM_CHANNEL_SELF, 0.0f); // no valid measurement
       }
     }
     #endif
