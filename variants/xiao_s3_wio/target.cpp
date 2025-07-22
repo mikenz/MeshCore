@@ -14,7 +14,7 @@ WRAPPER_CLASS radio_driver(radio, board);
 
 ESP32RTCClock fallback_clock;
 AutoDiscoverRTCClock rtc_clock(fallback_clock);
-SensorManager sensors;
+EnvironmentSensorManager sensors;
 
 #ifdef DISPLAY_CLASS
   DISPLAY_CLASS display;
@@ -23,8 +23,8 @@ SensorManager sensors;
 bool radio_init() {
   fallback_clock.begin();
   rtc_clock.begin(Wire);
-  pinMode(21, INPUT);
-  pinMode(48, OUTPUT);
+  pinMode(PIN_USER_BTN, INPUT);
+  pinMode(PIN_STATUS_LED, OUTPUT);
 
   #if defined(P_LORA_SCLK)
   spi.begin(P_LORA_SCLK, P_LORA_MISO, P_LORA_MOSI);
