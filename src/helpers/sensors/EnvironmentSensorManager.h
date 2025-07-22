@@ -9,16 +9,17 @@ protected:
   int next_available_channel = TELEM_CHANNEL_SELF + 1;
 
   bool AHTX0_initialized = false;
+  bool BH1750_initialized = false;
   bool BME280_initialized = false;
   bool BMP280_initialized = false;
-  bool INA3221_initialized = false;
+  bool BMP3XX_initialized = false;
   bool INA219_initialized = false;
-  bool SHTC3_initialized = false;
+  bool INA3221_initialized = false;
   bool LPS22HB_initialized = false;
   bool MLX90614_initialized = false;
-  bool VL53L0X_initialized = false;
-  bool BH1750_initialized = false;
   bool MPL3115A2_initialized = false;
+  bool SHTC3_initialized = false;
+  bool VL53L0X_initialized = false;
 
   bool gps_detected = false;
   bool gps_active = false;

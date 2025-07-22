@@ -30,6 +30,15 @@ static Adafruit_BME280 BME280;
 static Adafruit_BMP280 BMP280;
 #endif
 
+#if ENV_INCLUDE_BMP3XX // BMP388/BMP390
+#ifndef TELEM_BMP3XX_ADDRESS
+#define TELEM_BMP3XX_ADDRESS 0x77 // BMP3XX environmental sensor I2C address
+#endif
+#define TELEM_BMP3XX_SEALEVELPRESSURE_HPA (1013.25) // Athmospheric pressure at sea level
+#include <Adafruit_BMP3XX.h>
+static Adafruit_BMP3XX BMP3XX;
+#endif
+
 #if ENV_INCLUDE_SHTC3
 #include <Adafruit_SHTC3.h>
 static Adafruit_SHTC3 SHTC3;
@@ -133,6 +142,21 @@ bool EnvironmentSensorManager::begin() {
   }
   #endif
 
+  #if ENV_INCLUDE_BMP3XX
+  if (BMP3XX.begin_I2C(TELEM_BMP3XX_ADDRESS, TELEM_WIRE)) {
+    MESH_DEBUG_PRINTLN("Found BMP3XX at address: %02X", TELEM_BMP3XX_ADDRESS);
+    // Set up oversampling and filter initialization
+    BMP3XX.setTemperatureOversampling(BMP3_OVERSAMPLING_8X);
+    BMP3XX.setPressureOversampling(BMP3_OVERSAMPLING_4X);
+    BMP3XX.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
+    BMP3XX.setOutputDataRate(BMP3_ODR_50_HZ);
+    BMP3XX_initialized = true;
+  } else {
+    BMP3XX_initialized = false;
+    MESH_DEBUG_PRINTLN("BMP3XX was not found at I2C address %02X", TELEM_BMP3XX_ADDRESS);
+  }
+  #endif
+
   #if ENV_INCLUDE_SHTC3
   if (SHTC3.begin()) {
     MESH_DEBUG_PRINTLN("Found sensor: SHTC3");
@@ -198,7 +222,7 @@ bool EnvironmentSensorManager::begin() {
   }
   #endif
 
-  #ifdef ENV_INCLUDE_BH1750
+  #if ENV_INCLUDE_BH1750
   if (BH1750.begin(TELEM_BH1750_ADDRESS, TELEM_WIRE)) {
     MESH_DEBUG_PRINTLN("Found BH1750 at address: %02X", TELEM_BH1750_ADDRESS);
     BH1750_initialized = true;
@@ -254,6 +278,25 @@ bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, Cayen
       telemetry.addTemperature(TELEM_CHANNEL_SELF, BMP280.readTemperature());
       telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, BMP280.readPressure()/100);
       telemetry.addAltitude(TELEM_CHANNEL_SELF, BME280.readAltitude(TELEM_BME280_SEALEVELPRESSURE_HPA));
+    }
+    #endif
+
+    #if ENV_INCLUDE_BMP3XX
+    if (BMP3XX_initialized) {
+      if (!BMP3XX.performReading()) {
+        MESH_DEBUG_PRINTLN("BMP3XX reading failed");
+      } else {
+        // Multiple readings may be needed to get stable values
+        BMP3XX.performReading();
+        BMP3XX.performReading();
+        const float bmp3xx_temp = BMP3XX.readTemperature();
+        const float bmp3xx_pressure = BMP3XX.readPressure();
+        const float bmp3xx_altitude = BMP3XX.readAltitude(TELEM_BMP3XX_SEALEVELPRESSURE_HPA);
+        MESH_DEBUG_PRINTLN("BMP3XX Temp: %.2f C, Pressure: %.2f hPa, Altitude: %.2f m", bmp3xx_temp, bmp3xx_pressure/100, bmp3xx_altitude);
+        telemetry.addTemperature(TELEM_CHANNEL_SELF, bmp3xx_temp);
+        telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, bmp3xx_pressure/100);
+        telemetry.addAltitude(TELEM_CHANNEL_SELF, bmp3xx_altitude);
+      }
     }
     #endif
 
